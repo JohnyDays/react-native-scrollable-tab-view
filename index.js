@@ -48,16 +48,24 @@ const ScrollableTabView = React.createClass({
   },
 
   getInitialState() {
+    const scrollPosition = new Animated.Value(0)
+    const scrollOffset = new Animated.Value(0)
+    const windowWidth = Dimensions.get('window').width
+    const containerWidthVal = new Animated.Value(windowWidth)
     return {
       currentPage: this.props.initialPage,
-      scrollValue: new Animated.Value(this.props.initialPage),
-      containerWidth: Dimensions.get('window').width,
+      scrollPosition,
+      scrollOffset,
+      containerWidth: windowWidth,
+      containerWidthVal,
+      scrollValue: Platform.OS === 'ios' ? Animated.divide(scrollOffset, containerWidthVal) : Animated.add(scrollOffset, scrollPosition),
     };
   },
 
   componentWillReceiveProps(props) {
     if (props.page >= 0 && props.page !== this.state.currentPage) {
       this.goToPage(props.page);
+
     }
   },
 
@@ -99,10 +107,9 @@ const ScrollableTabView = React.createClass({
           contentContainerStyle={styles.scrollableContentContainerIOS}
           contentOffset={{ x: this.props.initialPage * this.state.containerWidth, }}
           ref={(scrollView) => { this.scrollView = scrollView; }}
-          onScroll={(e) => {
-            const offsetX = e.nativeEvent.contentOffset.x;
-            this._updateScrollValue(offsetX / this.state.containerWidth);
-          }}
+          onScroll={Animated.event(
+            [{nativeEvent: { contentOffset: { x: this.state.scrollOfset }}}]
+          )}
           onMomentumScrollBegin={(e) => {
             const offsetX = e.nativeEvent.contentOffset.x;
             const page = Math.round(offsetX / this.state.containerWidth);
@@ -141,10 +148,9 @@ const ScrollableTabView = React.createClass({
          initialPage={this.props.initialPage}
          onPageSelected={this._updateSelectedPage}
          keyboardDismissMode="on-drag"
-         onPageScroll={(e) => {
-           const { offset, position, } = e.nativeEvent;
-           this._updateScrollValue(position + offset);
-         }}
+         onPageScroll={Animated.event(
+           [{nativeEvent: {offset: this.state.scrollOffset, position: this.state.scrollPosition}}],
+         )}
          ref={(scrollView) => { this.scrollView = scrollView; }}
          {...this.props.contentProps}>
          {this._children().map((child, idx) => {
@@ -169,15 +175,11 @@ const ScrollableTabView = React.createClass({
     });
   },
 
-  _updateScrollValue(value) {
-    this.state.scrollValue.setValue(value);
-    this.props.onScroll(value);
-  },
-
   _handleLayout(e) {
     const { width, } = e.nativeEvent.layout;
 
     if (width !== this.state.containerWidth) {
+      this.state.containerWidthVal.setValue(width)
       this.setState({ containerWidth: width, });
       this.requestAnimationFrame(() => {
         this.goToPage(this.state.currentPage);
