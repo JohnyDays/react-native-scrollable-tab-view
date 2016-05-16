@@ -51,14 +51,14 @@ const ScrollableTabView = React.createClass({
     const scrollPosition = new Animated.Value(0)
     const scrollOffset = new Animated.Value(0)
     const windowWidth = Dimensions.get('window').width
-    const containerWidthVal = new Animated.Value(windowWidth)
+    const containerWidthVal = new Animated.Value(1/windowWidth)
     return {
       currentPage: this.props.initialPage,
       scrollPosition,
       scrollOffset,
       containerWidth: windowWidth,
       containerWidthVal,
-      scrollValue: Platform.OS === 'ios' ? Animated.divide(scrollOffset, containerWidthVal) : Animated.add(scrollOffset, scrollPosition),
+      scrollValue: Platform.OS === 'ios' ? Animated.multiply(scrollOffset, containerWidthVal) : Animated.add(scrollOffset, scrollPosition),
     };
   },
 
@@ -108,7 +108,7 @@ const ScrollableTabView = React.createClass({
           contentOffset={{ x: this.props.initialPage * this.state.containerWidth, }}
           ref={(scrollView) => { this.scrollView = scrollView; }}
           onScroll={Animated.event(
-            [{nativeEvent: { contentOffset: { x: this.state.scrollOfset }}}]
+            [{nativeEvent: { contentOffset: { x: this.state.scrollOffset }}}]
           )}
           onMomentumScrollBegin={(e) => {
             const offsetX = e.nativeEvent.contentOffset.x;
@@ -179,7 +179,7 @@ const ScrollableTabView = React.createClass({
     const { width, } = e.nativeEvent.layout;
 
     if (width !== this.state.containerWidth) {
-      this.state.containerWidthVal.setValue(width)
+      this.state.containerWidthVal.setValue(1/width)
       this.setState({ containerWidth: width, });
       this.requestAnimationFrame(() => {
         this.goToPage(this.state.currentPage);
